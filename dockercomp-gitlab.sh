@@ -142,6 +142,6 @@ function main() {
         esac
     fi
 
-    echo "Script done. please excute 'docker-compose up -d /APP/gitlab.d/'
+    echo "Script done. please excute 'docker-compose up -d /APP/gitlab.d/'"
 }
 main $*

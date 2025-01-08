@@ -26,7 +26,7 @@ BWhite="\033[1;37m"       # White
 ##### Common functio
 TODAY=$(date +%y%m%d_%H%M%S)
 function logging_message() {
-    cmd_log="tee -a ./script_${TODAY}.log"
+    cmd_log="tee -a ./$(basename "$0")_script_${TODAY}.log"
     run_today=$(date "+%y%m%d")
     run_time=$(date "+%H:%M:%S.%3N")
   
@@ -47,10 +47,10 @@ function logging_message() {
 
 function run_command() {
     command=$@
-    printf "CMD: [ ${command} ]\n" >>./script_command_${TODAY}.log 2>&1
+    printf "CMD: [ ${command} ]\n" >>./$(basename "$0")_script_command_${TODAY}.log 2>&1
     logging_message "CMD" "$@"
     
-    eval "${command}" >>./script_command_${TODAY}.log 2>&1
+    eval "${command}" >>./$(basename "$0")_script_command_${TODAY}.log 2>&1
     if [ $? -eq 0 ]; then
         logging_message "OK"
         return 0
@@ -90,7 +90,6 @@ function set_opts() {
 
     [ -z ${GITLAB_DOMAIN} ] && help_msg
 }
-
 
 function create_file() {
     run_command "cat <<EOF >/APP/gitlab.d/docker-compose.yml
@@ -141,8 +140,11 @@ function main() {
             n | N ) logging_message "SKIP" "Already file" ;;
             * )     cp -p /APP/gitlab.d/docker-compose.yml /APP/gitlab.d/docker-compose.yml_$(date +%Y%m%d_%H%M%S) ; create_file ;;
         esac
+    else
+        create_file
     fi
 
-    echo "\n${BWhite}Script done. please excute '${BGreen}docker-compose up -d /APP/gitlab.d/${BWhite}'${Color_Off}"
+    echo ""
+    echo -e "${BWhite}Script done. please excute '${BGreen}docker-compose up -d /APP/gitlab.d/${BWhite}'${Color_Off}"
 }
 main $*

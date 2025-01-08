@@ -91,6 +91,30 @@ function set_opts() {
     [ -z ${GITLAB_DOMAIN} ] && help_msg
 }
 
+
+function create_file() {
+    run_command "cat <<EOF >/APP/gitlab.d/docker-compose.yml
+version: '3.9'
+services:
+    gitlab:
+        image: 'gitlab/gitlab-ce'
+        container_name: gitlab
+        restart: always
+        environment:
+            GITLAB_OMNIBUS_CONFIG: |
+                external_url 'http://${GITLAB_DOMAIN}'
+                gitlab_rails['gitlab_shell_ssh_port'] = 8022
+            TZ: 'Asia/Seoul'
+        ports:
+        - '80:80'
+        - '443:443'
+        - '8022:20165'
+        volumes:
+        - './config:/APP/gitlab.d/etc'
+        - './logs:/APP/gitlab.d/log'
+        - './data:/DATA/gitlab.d'
+EOF"
+}
 function main() {
     [ $# -eq 0 ] && help_msg
     set_opts "$@"
@@ -108,35 +132,16 @@ function main() {
         logging_message "SKIP" "Already directory"
     fi
 
-    if [ ! -f /APP/gitlab.d/docker-compose.yml ]; then
+    if [ -f /APP/gitlab.d/docker-compose.yml ]; then
         logging_message "WARR" "Already file"
         read -p 'Re-create file? (Y|n) ' answer
         case ${answer} in
-            y | Y ) cp -p /APP/gitlab.d/docker-compose.yml /APP/gitlab.d/docker-compose.yml_$(date +%Y%m%d_%H%M%S) ;;
+            y | Y ) cp -p /APP/gitlab.d/docker-compose.yml /APP/gitlab.d/docker-compose.yml_$(date +%Y%m%d_%H%M%S) ; create_file ;;
             n | N ) llogging_message "SKIP" "Already file" ;;
-            * )     cp -p /APP/gitlab.d/docker-compose.yml /APP/gitlab.d/docker-compose.yml_$(date +%Y%m%d_%H%M%S) ;;
+            * )     cp -p /APP/gitlab.d/docker-compose.yml /APP/gitlab.d/docker-compose.yml_$(date +%Y%m%d_%H%M%S) ; create_file ;;
         esac
     fi
-    run_command "cat <<EOF >/APP/gitlab.d/docker-compose.yml
-version: '3.9'
-services:
-    gitlab:
-        image: 'gitlab/gitlab-ce'
-        container_name: gitlab
-        restart: always
-        enviroment:
-            GITLAB_OMNIBUS_CONFIG: |
-                external_url 'http://${GITLAB_DOMAIN}'
-                gitlab_rails['gitlab_shell_ssh_port'] = 8022
-            TZ: 'Asia/Seoul'
-        ports:
-        - '80:80'
-        - '443:443'
-        - '8022:20165'
-        volumes:
-        - './config:/APP/gitlab.d/etc'
-        - './logs:/APP/gitlab.d/log'
-        - './data:/DATA/gitlab.d'
-EOF"
+
+    echo "Script done. please excute 'docker-compose up -d /APP/gitlab.d/'
 }
 main $*

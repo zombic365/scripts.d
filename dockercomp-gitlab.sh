@@ -88,7 +88,7 @@ function set_opts() {
 
     shift $((OPTIND-1))
 
-    [ -z ${GITLAB_DOMAIN} ] | help_msg
+    [ -z ${GITLAB_DOMAIN} ] && help_msg
 }
 
 function main() {
@@ -114,7 +114,7 @@ services:
         restart: always
         enviroment:
             GITLAB_OMNIBUS_CONFIG: |
-                external_url '${GITLAB_DOMAIN}'
+                external_url 'http://${GITLAB_DOMAIN}'
                 gitlab_rails['gitlab_shell_ssh_port'] = 8022
             TZ: 'Asia/Seoul'
         ports:

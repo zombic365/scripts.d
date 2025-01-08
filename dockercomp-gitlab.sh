@@ -91,16 +91,21 @@ function set_opts() {
     [ -z ${GITLAB_DOMAIN} ] | help_msg
 }
 
-if [ ! -d /APP/gitlab.d ]; then
-    run_command "mkdir -p /APP/gitlab.d/{etc,log}"
-fi
-if [ ! -d /DATA/gitlab.d ]; then
-    run_command "mkdir -p /DATA/gitlab.d"
-    run_command "ln -s /DATA/gitlab.d /APP/gitlab.d/data"
-fi
+function main() {
+    [ $# -eq 0 ] && help_msg
+    set_opts "$@"
 
-if [ ! -f /APP/gitlab.d/docker-compose.yml ]; then
-    run_command "cat <<EOF >/APP/gitlab.d/docker-compose.yml
+    if [ ! -d /APP/gitlab.d ]; then
+        run_command "mkdir -p /APP/gitlab.d/{etc,log}"
+    fi
+
+    if [ ! -d /DATA/gitlab.d ]; then
+        run_command "mkdir -p /DATA/gitlab.d"
+        run_command "ln -s /DATA/gitlab.d /APP/gitlab.d/data"
+    fi
+
+    if [ ! -f /APP/gitlab.d/docker-compose.yml ]; then
+        run_command "cat <<EOF >/APP/gitlab.d/docker-compose.yml
 version: '3.9'
 services:
     gitlab:
@@ -121,4 +126,6 @@ services:
         - './logs:/APP/gitlab.d/log'
         - './data:/DATA/gitlab.d'
 EOF"
-fi
+    fi
+}
+main $*

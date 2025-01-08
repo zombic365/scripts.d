@@ -70,8 +70,8 @@ EOF
 }
 
 function set_opts() {
-    arguments=$(getopt --options irh \
-    --longoptions install,remove,help \
+    arguments=$(getopt --options uh \
+    --longoptions url,help \
     --name $(basename $0) \
     -- "$@")
 

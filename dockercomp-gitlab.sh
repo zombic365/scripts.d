@@ -92,7 +92,7 @@ function set_opts() {
 }
 
 if [ ! -d /APP/gitlab.d ]; then
-    run_command "mkdir -p /APP/gitlab.d/{etc.log}"
+    run_command "mkdir -p /APP/gitlab.d/{etc,log}"
 fi
 if [ ! -d /DATA/gitlab.d ]; then
     run_command "mkdir -p /DATA/gitlab.d"

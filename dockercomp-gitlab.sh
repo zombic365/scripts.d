@@ -115,6 +115,7 @@ services:
         - './data:/DATA/gitlab.d'
 EOF"
 }
+
 function main() {
     [ $# -eq 0 ] && help_msg
     set_opts "$@"
@@ -137,11 +138,11 @@ function main() {
         read -p 'Re-create file? (Y|n) ' answer
         case ${answer} in
             y | Y ) cp -p /APP/gitlab.d/docker-compose.yml /APP/gitlab.d/docker-compose.yml_$(date +%Y%m%d_%H%M%S) ; create_file ;;
-            n | N ) llogging_message "SKIP" "Already file" ;;
+            n | N ) logging_message "SKIP" "Already file" ;;
             * )     cp -p /APP/gitlab.d/docker-compose.yml /APP/gitlab.d/docker-compose.yml_$(date +%Y%m%d_%H%M%S) ; create_file ;;
         esac
     fi
 
-    echo "Script done. please excute 'docker-compose up -d /APP/gitlab.d/'"
+    echo "\n${BWhite}Script done. please excute '${BGreen}docker-compose up -d /APP/gitlab.d/${BWhite}'${Color_Off}"
 }
 main $*

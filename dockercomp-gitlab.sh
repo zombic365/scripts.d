@@ -79,7 +79,7 @@ function set_opts() {
 
     while true; do
         case "$1" in
-            -u | --url  ) echo $2; GITLAB_DOMAIN=$2 ; shift 2 ;;
+            -u | --url  ) GITLAB_DOMAIN=$2 ; shift 2 ;;
             -h | --help ) help_msg      ;;
                      -- ) shift ; break ;;
                       * ) help_msg      ;;
@@ -97,15 +97,27 @@ function main() {
 
     if [ ! -d /APP/gitlab.d ]; then
         run_command "mkdir -p /APP/gitlab.d/{etc,log}"
+    else
+        logging_message "SKIP" "Already directory"
     fi
 
     if [ ! -d /DATA/gitlab.d ]; then
         run_command "mkdir -p /DATA/gitlab.d"
         run_command "ln -s /DATA/gitlab.d /APP/gitlab.d/data"
+    else
+        logging_message "SKIP" "Already directory"
     fi
 
     if [ ! -f /APP/gitlab.d/docker-compose.yml ]; then
-        run_command "cat <<EOF >/APP/gitlab.d/docker-compose.yml
+        logging_message "WARR" "Already file"
+        read -p 'Re-create file? (Y|n) ' answer
+        case ${answer} in
+            y | Y ) cp -p /APP/gitlab.d/docker-compose.yml /APP/gitlab.d/docker-compose.yml_$(date +%Y%m%d_%H%M%S) ;;
+            n | N ) llogging_message "SKIP" "Already file" ;;
+            * )     cp -p /APP/gitlab.d/docker-compose.yml /APP/gitlab.d/docker-compose.yml_$(date +%Y%m%d_%H%M%S) ;;
+        esac
+    fi
+    run_command "cat <<EOF >/APP/gitlab.d/docker-compose.yml
 version: '3.9'
 services:
     gitlab:
@@ -126,6 +138,5 @@ services:
         - './logs:/APP/gitlab.d/log'
         - './data:/DATA/gitlab.d'
 EOF"
-    fi
 }
 main $*

@@ -46,11 +46,11 @@ function logging_message() {
 }
 
 function run_command() {
-    _CMD=$@
-    printf "CMD: [ ${_CMD} ]\n" >>./script_cmd_${TODAY}.log 2>&1
+    command=$@
+    printf "CMD: [ ${command} ]\n" >>./script_command_${TODAY}.log 2>&1
     logging_message "CMD" "$@"
     
-    eval "${_CMD}" >>./script_cmd_${TODAY}.log 2>&1
+    eval "${command}" >>./script_command_${TODAY}.log 2>&1
     if [ $? -eq 0 ]; then
         logging_message "OK"
         return 0
@@ -70,8 +70,8 @@ EOF
 }
 
 function set_opts() {
-    arguments=$(getopt --options uh \
-    --longoptions url,help \
+    arguments=$(getopt --options u:h \
+    --longoptions url:,help \
     --name $(basename $0) \
     -- "$@")
 
@@ -79,7 +79,7 @@ function set_opts() {
 
     while true; do
         case "$1" in
-            -u | --url  ) GITLAB_DOMAIN=$2 ; shift 2 ;;
+            -u | --url  ) echo $2; GITLAB_DOMAIN=$2 ; shift 2 ;;
             -h | --help ) help_msg      ;;
                      -- ) shift ; break ;;
                       * ) help_msg      ;;

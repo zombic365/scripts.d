@@ -101,16 +101,16 @@ services:
         environment:
             GITLAB_OMNIBUS_CONFIG: |
                 external_url 'http://${GITLAB_DOMAIN}'
-                gitlab_rails['gitlab_shell_ssh_port'] = 8022
+                gitlab_rails['gitlab_shell_ssh_port'] = 22
             TZ: 'Asia/Seoul'
         ports:
-        - '80:80'
-        - '443:443'
-        - '8022:20165'
+        - '8080:80'
+        - '8443:443'
+        - '8022:22'
         volumes:
-        - './config:/APP/gitlab.d/etc'
-        - './logs:/APP/gitlab.d/log'
-        - './data:/DATA/gitlab.d'
+        - '/APP/gitlab.d/etc:/etc/gitlab'
+        - '/APP/gitlab.d/log:/var/log/gitlab'
+        - '/DATA/gitlab.d/:/var/opt/gitlab'
 EOF"
 }
 

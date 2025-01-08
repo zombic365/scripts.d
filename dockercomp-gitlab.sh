@@ -93,7 +93,6 @@ function set_opts() {
 
 function create_file() {
     run_command "cat <<EOF >/APP/gitlab.d/docker-compose.yml
-version: '3.9'
 services:
     gitlab:
         image: 'gitlab/gitlab-ce'
@@ -145,6 +144,6 @@ function main() {
     fi
 
     echo ""
-    echo -e "${BWhite}Script done. please excute '${BGreen}docker-compose up -d /APP/gitlab.d/${BWhite}'${Color_Off}"
+    echo -e "${BWhite}Script done. please excute '${BGreen}docker-compose -f /APP/gitlab.d/docker-compose.yml up -d${BWhite}'${Color_Off}"
 }
 main $*

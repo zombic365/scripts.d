@@ -25,51 +25,82 @@ BWhite="\033[1;37m"       # White
 
 ##### Common functio
 TODAY=$(date +%y%m%d_%H%M%S)
-function log_msg() {
-    _CMD_LOG="tee -a ./script_${TODAY}.log"
-    _RUN_TODAY=$(date "+%y%m%d")
-    _RUN_TIME=$(date "+%H:%M:%S.%3N")
+function logging_message() {
+    cmd_log="tee -a ./script_${TODAY}.log"
+    run_today=$(date "+%y%m%d")
+    run_time=$(date "+%H:%M:%S.%3N")
   
-    _LOG_TIME="${BWhite}[ ${_RUN_TODAY} ${_RUN_TIME} ]${Color_Off}"
-    _LOG_TYPE=$1
-    _LOG_MSG=$2
+    log_time="${BWhite}[ ${run_today} ${run_time} ]${Color_Off}"
+    log_type=$1
+    log_msg=$2
 
-    case ${_LOG_TYPE} in
-        "CMD")   printf "${_LOG_TIME} ${BWhite}[${_LOG_TYPE}] ${_LOG_MSG}${Color_Off}: "         |eval "${_CMD_LOG}" ;;
-        "OK")    printf "${BGreen}${_LOG_TYPE}${Color_Off}\n"                                    |eval "${_CMD_LOG}" ;;        
-        "FAIL")  printf "${BRed}${_LOG_TYPE}${Color_Off}\n"                                      |eval "${_CMD_LOG}" ;;
-        "SKIP")  printf "${BPurple}${_LOG_TYPE} ${BWhite}-> ${_LOG_MSG}${Color_Off}\n"           |eval "${_CMD_LOG}" ;;
-        "WARR")  printf "${_LOG_TIME} ${BCyan}[${_LOG_TYPE}] ${_LOG_MSG}${Color_Off}\n"          |eval "${_CMD_LOG}" ;;
-        "INFO")  printf "${_LOG_TIME} ${BWhite}[${_LOG_TYPE}] ${_LOG_MSG}${Color_Off}\n"        |eval "${_CMD_LOG}" ;;
-        "CRT")   printf "${_LOG_TIME} ${BWhite}[${_LOG_TYPE}] ${BRed}${_LOG_MSG}${Color_Off}\n"  |eval "${_CMD_LOG}" ;;
+    case ${log_type} in
+        "CMD")   printf "${log_time} ${BWhite}[${log_type}] ${log_msg}${Color_Off}: "         |eval "${cmd_log}" ;;
+        "OK")    printf "${BGreen}${log_type}${Color_Off}\n"                                  |eval "${cmd_log}" ;;        
+        "FAIL")  printf "${BRed}${log_type}${Color_Off}\n"                                    |eval "${cmd_log}" ;;
+        "SKIP")  printf "${BPurple}${log_type} ${BWhite}-> ${log_msg}${Color_Off}\n"          |eval "${cmd_log}" ;;
+        "WARR")  printf "${log_time} ${BCyan}[${log_type}] ${log_msg}${Color_Off}\n"          |eval "${cmd_log}" ;;
+        "INFO")  printf "${log_time} ${BWhite}[${log_type}] ${log_msg}${Color_Off}\n"         |eval "${cmd_log}" ;;
+        "CRT")   printf "${log_time} ${BWhite}[${log_type}] ${BRed}${log_msg}${Color_Off}\n"  |eval "${cmd_log}" ;;
     esac
 }
 
-function run_cmd() {
+function run_command() {
     _CMD=$@
     printf "CMD: [ ${_CMD} ]\n" >>./script_cmd_${TODAY}.log 2>&1
-    log_msg "CMD" "$@"
+    logging_message "CMD" "$@"
     
     eval "${_CMD}" >>./script_cmd_${TODAY}.log 2>&1
     if [ $? -eq 0 ]; then
-        log_msg "OK"
+        logging_message "OK"
         return 0
     else
-        log_msg "FAIL"
+        logging_message "FAIL"
         return 1
     fi
 }
 
+function help_msg() {
+    cat <<EOF
+Usage: $0 [Options]
+Options:
+-u, --url : Server IP or Your Domain url
+EOF
+    exit 0
+}
+
+function set_opts() {
+    arguments=$(getopt --options irh \
+    --longoptions install,remove,help \
+    --name $(basename $0) \
+    -- "$@")
+
+    eval set -- "${arguments}"
+
+    while true; do
+        case "$1" in
+            -u | --url  ) GITLAB_DOMAIN=$2 ; shift 2 ;;
+            -h | --help ) help_msg      ;;
+                     -- ) shift ; break ;;
+                      * ) help_msg      ;;
+        esac
+    done
+
+    shift $((OPTIND-1))
+
+    [ -z ${GITLAB_DOMAIN} ] | help_msg
+}
 
 if [ ! -d /APP/gitlab.d ]; then
-    run_cmd "mkdir -p /APP/gitlab.d/{etc.log}"
+    run_command "mkdir -p /APP/gitlab.d/{etc.log}"
 fi
 if [ ! -d /DATA/gitlab.d ]; then
-    run_cmd "mkdir -p /DATA/gitlab.d"
-    run_cmd "ln -s /DATA/gitlab.d /APP/gitlab.d/data"
+    run_command "mkdir -p /DATA/gitlab.d"
+    run_command "ln -s /DATA/gitlab.d /APP/gitlab.d/data"
 fi
 
-run_cmd "cat <<EOF >/APP/gitlab.d/docker-compose.yml
+if [ ! -f /APP/gitlab.d/docker-compose.yml ]; then
+    run_command "cat <<EOF >/APP/gitlab.d/docker-compose.yml
 version: '3.9'
 services:
     gitlab:
@@ -78,7 +109,7 @@ services:
         restart: always
         enviroment:
             GITLAB_OMNIBUS_CONFIG: |
-                external_url 'https://citgit.enter-citech.toastmaker.net'
+                external_url '${GITLAB_DOMAIN}'
                 gitlab_rails['gitlab_shell_ssh_port'] = 8022
             TZ: 'Asia/Seoul'
         ports:
@@ -90,3 +121,4 @@ services:
         - './logs:/APP/gitlab.d/log'
         - './data:/DATA/gitlab.d'
 EOF"
+fi

@@ -109,7 +109,7 @@ services:
                 external_url 'http://${GITLAB_DOMAIN}'
                 gitlab_rails['gitlab_shell_ssh_port'] = 22
             TZ: 'Asia/Seoul'
-            GITLAB_ROOT_PASSWORD: ${GITLAB_ROOT_PASSWORD}"
+            GITLAB_ROOT_PASSWORD: ${GITLAB_ROOT_PASSWORD}
             sidekiq['concurrency'] = 10
             prometheus_monitoring['enable'] = false
         ports:

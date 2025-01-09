@@ -47,6 +47,7 @@ Options:
 -i, --install          : Install Rundeck
 -r, --remove           : Remove  Rundeck
 -p, --path [ STRING ]  : Rundeck config path
+    --ip   [ STRING ]  : Rundeck server ip
 -h, --help             : Script Help
 EOF
     exit 0
@@ -54,18 +55,19 @@ EOF
 
 function set_opts() {
     arguments=$(getopt --options p:irh \
-    --longoptions path:,help,install,remove \
+    --longoptions path:,ip:,help,install,remove \
     --name $(basename $0) \
     -- "$@")
 
     eval set -- "${arguments}"
     while true; do
         case "$1" in
-            -i | --install  ) MODE="install"; shift   ;;
-            -r | --remove   ) MODE="remove" ; shift   ;;
+            -i | --install  ) MODE="install"  ; shift   ;;
+            -r | --remove   ) MODE="remove"   ; shift   ;;
             -p | --path     ) RDECK_BASE=$2   ; shift 2 ;;
+                 --ip       ) REDCK_IP=$2     ; shift 2 ;;
             -h | --help     ) help_message              ;;            
-            --              ) shift         ; break   ;;
+            --              ) shift           ; break   ;;
             ?               ) help_message              ;;
         esac
     done
@@ -75,6 +77,7 @@ function set_opts() {
 }
 
 function install_rundeck() {
+    _java_bin_path=$(command -v java)
     if [ ! -d ${RDECK_BASE} ]; then
         mkdir -p ${RDECK_BASE}
     else
@@ -83,35 +86,82 @@ function install_rundeck() {
 
     run_command "wget https://packagecloud.io/pagerduty/rundeck/packages/java/org.rundeck/rundeck-5.8.0-20241205.war/artifacts/rundeck-5.8.0-20241205.war/download?distro_version_id=167 \
     -O ${RDECK_BASE}/rundeck-5.8.0-20241205.war"
-    run_command "java -Xmx4g -jar ${RDECK_BASE}/rundeck-5.8.0-20241205.war"
-}
-    
 
+    if [ ! -f ${RDECK_BASE}/env.cfg ]; then
+        run_command "cat <<EOF >${RDECK_BASE}/env.cfg
+##### > Rundeck enviroment
+PATH=$PATH:${RDECK_BASE}/tools/bin
+MANPATH=$MANPATH:${RDECK_BASE}/docs/man
+EOF"
+    else
+        logging_message "SKIP" "Already create file ${REDECK_BASE}/env.cfg"
+    fi
+
+    if [ ${grep -q "${RDECK_BASE}/env.cfg" ${HOME}/.bash_profile} ]; then
+        run_command "echo \"source ${RDECK_BASE}/env.cfg\" >>${HOME}/.bash_profile"
+    fi
+
+    if [ ! -f /etc/systemd/system/rundeck.service ]; then
+        run_command "cat <<EOF >/etc/systemd/system/rundeck.service
+[Unit]
+Description=Rundeck
+
+[Service]
+Type=simple
+SyslogLevel=debug
+User=root
+ExecStart=${_java_bin_path} -Xmx4g -Xms1g -XX:MaxMetaspaceSize=256m -jar ${RDECK_BASE}/rundeck-5.8.0-20241205.war
+ExecStart=${_java_bin_path} -Xmx1024m -Xms256m -XX:MaxMetaspaceSize=256m -server -jar ${RDECK_BASE}/rundeck-5.8.0-20241205.war
+KillSignal=SIGTERM
+KillMode=mixed
+WorkingDirectory=${RDECK_BASE}
+
+LimitNOFILE=65535
+LimitNPROC=65535
+TasksMax=infinity
+ExecReload=/bin/kill -HUP $MAINPID
+TimeoutStopSec=120
+SyslogIdentifier=IRI
+Restart=on-failure
+RestartSec=120
+
+[Install]
+WantedBy=multi-user.target
+EOF"
+        run_command "source ${HOME}/.bash_profile"
+        run_command "systemctl daemon-reload"
+        run_command "systemctl start rundeck ; systemctl stop rundeck"
+    else
+        logging_message "SKIP" "Already create file /etc/systmed/system/rundeck.service"
+    fi
+}
+
+function setup_rundeck_config() {
+    if [ ${grep -q "grails.serverURL=http://${RDECK_IP}:4440" ${RDECK_BASE}/server/config/rundeck-config.properties} ]; then
+        run_command "cp -p ${RDECK_BASE}/server/config/rundeck-config.properties ${RDECK_BASE}/server/config/rundeck-config.properties.bk_$(date +%y%m%d_%H%M%S)"
+        run_command "sed -i 's/server.address/#&/g' ${RDECK_BASE}/server/config/rundeck-config.properties"
+        run_command "sed -i '/^#server.address/a\server.address=0.0.0.0' ${RDECK_BASE}/server/config/rundeck-config.properties"
+        run_command "sed -i 's/grails.serverURL/#&/g' ${RDECK_BASE}/server/config/rundeck-config.properties"
+        run_command "sed -i '/^#grails.serverURL/a\grails.serverURL=http://${RDECK_IP}:4440' ${RDECK_BASE}/server/config/rundeck-config.properties"
+    else
+        logging_message "SKIP" "Already config file ${RDECK_BASE}/server/config/rundeck-config.properties"
+    fi
+}
 function main() {
     [ $# -eq 0 ] && help_message
     set_opts "$@"
+
+    case ${MODE} in
+        "install" )
+            install_rundeck
+            if [ $? -eq 0 ]; then
+                setup_rundeck_config
+            else
+                logging_message "ERROR" "Install rundeck failed/"
+            fi
+        ;;
+        # "remove"  ) echo "remote"  ; exit 0 ;;
+        # *         ) help_message     ; exit 0 ;;
+    esac
 }
 main $*
-export PATH=$PATH:$RDECK_BASE/tools/bin
-export MANPATH=$MANPATH:$RDECK_BASE/docs/man
-
-### war파일 실행, 종료
-java -Xmx4g -jar rundeck-5.8.0-20241205.war
-# ctrl + c
-
-### rundeck-config.properties파일 수정후 재기동
-cp -p $RDECK_BASE/server/config/rundeck-config.properties $RDECK_BASE/server/config/rundeck-config.properties.bk_$(date +%y%m%d_%H%M%S)
-sed -i 's/server.address/#&/g' $RDECK_BASE/server/config/rundeck-config.properties
-sed -i '/^#server.address/a\server.address=0.0.0.0' $RDECK_BASE/server/config/rundeck-config.properties
-
-sed -i 's/grails.serverURL/#&/g' $RDECK_BASE/server/config/rundeck-config.properties
-sed -i '/^#grails.serverURL/a\grails.serverURL=http://211.233.50.183:4440' $RDECK_BASE/server/config/rundeck-config.properties
-
-### 업데이트 후 다시 수행
-java -Xmx4g -jar rundeck-5.8.0-20241205.war
-
-
-
-
-### Ansible 설정
-mkdir -p /DATA/ansible.d/os_hardenning

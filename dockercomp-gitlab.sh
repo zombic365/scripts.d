@@ -70,8 +70,8 @@ EOF
 }
 
 function set_opts() {
-    arguments=$(getopt --options u:h \
-    --longoptions url:,help \
+    arguments=$(getopt --options u:ph \
+    --longoptions url:password,help \
     --name $(basename $0) \
     -- "$@")
 
@@ -79,7 +79,13 @@ function set_opts() {
 
     while true; do
         case "$1" in
-            -u | --url  ) GITLAB_DOMAIN=$2 ; shift 2 ;;
+            -u | --url       ) GITLAB_DOMAIN=$2        ; shift 2 ;;
+            -p | --password  )
+                GITLAB_ROOT_PASSWORD=$2
+                if [ -z ${GITLAB_ROOT_PASSWORD} ]; then
+                    GITLAB_ROOT_PASSWORD="gitrootpass!@#123"
+                fi
+                shift 2 ;;
             -h | --help ) help_msg      ;;
                      -- ) shift ; break ;;
                       * ) help_msg      ;;
@@ -103,6 +109,9 @@ services:
                 external_url 'http://${GITLAB_DOMAIN}'
                 gitlab_rails['gitlab_shell_ssh_port'] = 22
             TZ: 'Asia/Seoul'
+            GITLAB_ROOT_PASSWORD: ${GITLAB_ROOT_PASSWORD}"
+            sidekiq['concurrency'] = 10
+            prometheus_monitoring['enable'] = false
         ports:
         - '8080:80'
         - '8443:443'
@@ -145,5 +154,8 @@ function main() {
 
     echo ""
     echo -e "${BWhite}Script done. please excute '${BGreen}docker-compose -f /APP/gitlab.d/docker-compose.yml up -d${BWhite}'${Color_Off}"
+    echo -e "${BWhite}below your gitlab default id, password${Color_Off}"
+    echo -e "${BWhite}id: root${Color_Off}"
+    echo -e "${BWhite}pw: ${GITLAB_ROOT_PASSWORD}${Color_Off}"
 }
 main $*

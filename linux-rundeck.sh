@@ -65,7 +65,7 @@ function set_opts() {
             -i | --install  ) MODE="install"  ; shift   ;;
             -r | --remove   ) MODE="remove"   ; shift   ;;
             -p | --path     ) RDECK_BASE=$2   ; shift 2 ;;
-                 --ip       ) REDCK_IP=$2     ; shift 2 ;;
+                 --ip       ) RDECK_IP=$2     ; shift 2 ;;
             -h | --help     ) help_message              ;;            
             --              ) shift           ; break   ;;
             ?               ) help_message              ;;
@@ -73,7 +73,6 @@ function set_opts() {
     done
 
     shift $((OPTIND-1))
-    [ -z ${RDECK_BASE} ] && help_msg
 }
 
 function install_rundeck() {
@@ -84,20 +83,22 @@ function install_rundeck() {
         logging_message "SKIP" "Already ${RDECK_BASE}"
     fi
 
-    run_command "wget https://packagecloud.io/pagerduty/rundeck/packages/java/org.rundeck/rundeck-5.8.0-20241205.war/artifacts/rundeck-5.8.0-20241205.war/download?distro_version_id=167 \
-    -O ${RDECK_BASE}/rundeck-5.8.0-20241205.war"
-
-    if [ ! -f ${RDECK_BASE}/env.cfg ]; then
-        run_command "cat <<EOF >${RDECK_BASE}/env.cfg
-##### > Rundeck enviroment
-PATH=$PATH:${RDECK_BASE}/tools/bin
-MANPATH=$MANPATH:${RDECK_BASE}/docs/man
-EOF"
-    else
-        logging_message "SKIP" "Already create file ${REDECK_BASE}/env.cfg"
+    if [ ! -f ${RDECK_BASE}/rundeck-5.8.0-20241205.war ]; then
+        run_command "wget https://packagecloud.io/pagerduty/rundeck/packages/java/org.rundeck/rundeck-5.8.0-20241205.war/artifacts/rundeck-5.8.0-20241205.war/download?distro_version_id=167 \
+        -O ${RDECK_BASE}/rundeck-5.8.0-20241205.war"
     fi
 
-    if [ ${grep -q "${RDECK_BASE}/env.cfg" ${HOME}/.bash_profile} ]; then
+    if [ ! -f ${RDECK_BASE}/env.cfg ]; then
+        run_command "cat <<\EOF >${RDECK_BASE}/env.cfg
+##### > Rundeck enviroment
+PATH=$PATH:\${RDECK_BASE}/tools/bin
+MANPATH=$MANPATH:\${RDECK_BASE}/docs/man
+EOF"
+    else
+        logging_message "SKIP" "Already create file ${RDECK_BASE}/env.cfg"
+    fi
+
+    if [ ! $(grep -q "${RDECK_BASE}/env.cfg" ${HOME}/.bash_profile) ]; then
         run_command "echo \"source ${RDECK_BASE}/env.cfg\" >>${HOME}/.bash_profile"
     fi
 
@@ -111,7 +112,7 @@ Type=simple
 SyslogLevel=debug
 User=root
 ExecStart=${_java_bin_path} -Xmx4g -Xms1g -XX:MaxMetaspaceSize=256m -jar ${RDECK_BASE}/rundeck-5.8.0-20241205.war
-ExecStart=${_java_bin_path} -Xmx1024m -Xms256m -XX:MaxMetaspaceSize=256m -server -jar ${RDECK_BASE}/rundeck-5.8.0-20241205.war
+# ExecStart=${_java_bin_path} -Xmx1024m -Xms256m -XX:MaxMetaspaceSize=256m -server -jar ${RDECK_BASE}/rundeck-5.8.0-20241205.war
 KillSignal=SIGTERM
 KillMode=mixed
 WorkingDirectory=${RDECK_BASE}
@@ -128,16 +129,36 @@ RestartSec=120
 [Install]
 WantedBy=multi-user.target
 EOF"
-        run_command "source ${HOME}/.bash_profile"
-        run_command "systemctl daemon-reload"
-        run_command "systemctl start rundeck ; systemctl stop rundeck"
     else
         logging_message "SKIP" "Already create file /etc/systmed/system/rundeck.service"
+    fi
+
+    run_command "source ${HOME}/.bash_profile"
+    run_command "systemctl daemon-reload"
+    run_command "systemctl start rundeck"
+    sleep 5
+}
+
+function remove_rundeck() {
+    run_command "systemctl stop rundeck"
+    if [ -f /etc/systmed/system/rundeck.service ]; then
+        run_command "rm -f /etc/systmed/system/rundeck.service"
+    fi
+
+    if [ -d /APP/rundeck.d ]; then
+        read -p "Remove rundeck directory(Path: ${RDECK_BASE})? ((Y|n): " _answer
+        case ${_answer} in
+        	[Yy]* ) run_command "rm -rf /APP/rundeck.d"; [ $? -eq 0 ] && return 0 ;;
+        	[Nn]* ) return 0 ;;
+        esac
+    else
+        logging_message "SKIP" "Already remove directory ${RDECK_BASE}"
+        return 0
     fi
 }
 
 function setup_rundeck_config() {
-    if [ ${grep -q "grails.serverURL=http://${RDECK_IP}:4440" ${RDECK_BASE}/server/config/rundeck-config.properties} ]; then
+    if [ ! $(grep -q "grails.serverURL=http://${RDECK_IP}:4440" ${RDECK_BASE}/server/config/rundeck-config.properties) ]; then
         run_command "cp -p ${RDECK_BASE}/server/config/rundeck-config.properties ${RDECK_BASE}/server/config/rundeck-config.properties.bk_$(date +%y%m%d_%H%M%S)"
         run_command "sed -i 's/server.address/#&/g' ${RDECK_BASE}/server/config/rundeck-config.properties"
         run_command "sed -i '/^#server.address/a\server.address=0.0.0.0' ${RDECK_BASE}/server/config/rundeck-config.properties"
@@ -147,20 +168,52 @@ function setup_rundeck_config() {
         logging_message "SKIP" "Already config file ${RDECK_BASE}/server/config/rundeck-config.properties"
     fi
 }
+
+function unsetup_rundeck_config() {
+    if [ $(grep -q "${RDECK_BASE}/env.cfg" ${HOME}/.bash_profile) ]; then
+        _line_num=$(grep -n "${RDECK_BASE}/env.cfg" ${HOME}/.bash_profile |awk -F':' '{printf "%sd;", $1}')
+        run_command "sed -i '${_line_num}' ${HOME}/.bash_profile"
+    else
+        return 0
+    fi
+}
+
 function main() {
     [ $# -eq 0 ] && help_message
     set_opts "$@"
 
     case ${MODE} in
         "install" )
-            install_rundeck
+            if [[ -z ${RDECK_BASE} ]] && [[ -z ${RDECK_IP} ]]; then
+                help_message
+            fi
+            install_rundeckw
             if [ $? -eq 0 ]; then
                 setup_rundeck_config
+                if [ $? -eq 0 ]; then
+                    run_command "systemctl stop rundeck"
+                    logging_message "INFO" "Install rundeck completed, excute command [ systemctl start rundeck ]"
+                fi
             else
-                logging_message "ERROR" "Install rundeck failed/"
+                logging_message "ERROR" "Install rundeck failed."
             fi
         ;;
-        # "remove"  ) echo "remote"  ; exit 0 ;;
+        "remove"  )
+            if [ -z ${RDECK_BASE} ]; then
+                help_message
+            fi
+
+            remove_rundeck
+            if [ $? -eq 0 ]; then
+                unsetup_rundeck_config
+                if [ $? -eq 0 ]; then
+                    run_command "systemctl stop rundeck"
+                    logging_message "INFO" "Remove rundeck completed"
+                fi
+            else
+                logging_message "ERROR" "Remove rundeck failed."
+            fi
+        ;;
         # *         ) help_message     ; exit 0 ;;
     esac
 }

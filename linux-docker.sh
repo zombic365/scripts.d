@@ -117,24 +117,30 @@ function pre_cmd_check() {
     fi
 }
 
-# function pre_pkg_check() {
-#     _check_pkg=(curl)
-#     _check_pkg_fail=()
+function pre_pkg_check() {
+    # _check_pkg=(curl)
+    _check_pkg=$2
+    _check_pkg_fail=()
 
-#     for((i=0; i<=${#_check_pkg[@]}; i++)); do
-#         run_command "dnf list installed |grep -q ^${_pkg}"
-#         if [ $? -eq 1 ]; then
-#             _check_pkg_fail+=${_pkg}
-#         fi
-#     done
+    if dnf list installed |grep -q "^${_pkg}"; then
+        return 0
+    else
+        return 1
+    done
+    # for((i=0; i<=${#_check_pkg[@]}; i++)); do
+    #     run_command "dnf list installed |grep -q ^${_pkg}"
+    #     if [ $? -eq 1 ]; then
+    #         _check_pkg_fail+=${_pkg}
+    #     fi
+    # done
 
-#     if [ -n ${_check_pkg_fail} ]; then
-#         logging_message "CRT" "Please check Command, Packages [ ${_check_pkg_fail[@]} ]"
-#         return 1
-#     else
-#         return 0
-#     fi
-# }
+    # if [ -n ${_check_pkg_fail} ]; then
+    #     logging_message "CRT" "Please check Command, Packages [ ${_check_pkg_fail[@]} ]"
+    #     return 1
+    # else
+    #     return 0
+    # fi
+}
 
 function pre_install_docker() {
     ##### Docker repository add for rocky
@@ -150,8 +156,23 @@ function pre_install_docker() {
 
 function install_docker() {
     for _pkg in "docker-ce" "docker-ce-cli" "containerd.io" "docker-buildx-plugin" "docker-compose-plugin"; do
-        run_command "dnf install -y ${_pkg}"
+        pre_pkg_check "${_pkg}"
+        if [ $? -eq 1 ];
+            run_command "dnf install -y ${_pkg}"
+        fi
     done
+
+    run_command "sudo curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose"
+    if [ $? -eq 0 ]; then
+        if ! grep -q '/usr/local/bin' ${HOME}/.bash_profile; then
+            run_command "sed -i '/export PATH/i\PATH=\$PATH:/usr/local/bin' ${HOME}/.bash_profile"
+        fi
+        run_command "chmod +x /usr/local/bin/docker-compose"
+        [ $? -eq 0 ] && return 0 || return 1
+    else
+        logging_message "ERROR" "Download fail docker-compose."
+        return 1
+    fi
 }
 
 function remove_docker() {
@@ -173,6 +194,12 @@ main() {
             pre_install_docker
             if [ $? -eq 0 ]; then
                 install_docker
+                if [ $? -eq 0 ]; then
+                    logging_message "INFO" "Complete install docker & docker-compose and excute command [ source ${HOME}/.bash_profile ]."
+                    exit 0
+                else
+                    exit 1
+                fi
             else
                 exit 1
             fi
@@ -181,12 +208,3 @@ main() {
     esac
 }
 main $*
-
-# # Docker Compose 설치
-# sudo curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
-
-# # Docker Compose 실행 권한 부여
-# sudo chmod +x /usr/local/bin/docker-compose
-
-# # 설치된 Docker Compose 실행 확인
-# docker-compose --version

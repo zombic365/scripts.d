@@ -122,7 +122,7 @@ function pre_pkg_check() {
     _check_pkg=$2
     _check_pkg_fail=()
 
-    if dnf list installed |grep -q "^${_pkg}"; then
+    if dnf list installed |grep -q "^${_check_pkg}"; then
         return 0
     else
         return 1

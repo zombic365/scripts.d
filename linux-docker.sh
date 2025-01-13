@@ -126,7 +126,7 @@ function pre_pkg_check() {
         return 0
     else
         return 1
-    done
+    fi
     # for((i=0; i<=${#_check_pkg[@]}; i++)); do
     #     run_command "dnf list installed |grep -q ^${_pkg}"
     #     if [ $? -eq 1 ]; then

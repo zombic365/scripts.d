@@ -77,17 +77,8 @@ function set_opts() {
     eval set -- "${arguments}"
     while true; do
         case "$1" in
-            -i | --install )
-                pre_install_docker
-                if [ $? -eq 0 ]; then
-                    install_docker
-                    exit 0
-                else
-                    logging_message "CRT" "Install docker check fail"
-                    exit 1
-                fi
-            ;;
-            -r | --remove ) remove_docker ; exit 0 ;;
+            -i | --install ) MODE="install" ; shift ;;
+            -r | --remove  ) MODE="remove"  ; shift ;;
             -h | --help ) help_usage ;;
             -- ) shift ; break ;;
             *  ) help_usage ;;
@@ -119,10 +110,10 @@ function pre_cmd_check() {
 
 function pre_pkg_check() {
     # _check_pkg=(curl)
-    _check_pkg=$2
-    _check_pkg_fail=()
+    _check_pkg=$1
 
-    if dnf list installed |grep -q "^${_check_pkg}"; then
+    if dnf list installed |grep -q ^${_check_pkg}; then
+        
         return 0
     else
         return 1
@@ -144,45 +135,89 @@ function pre_pkg_check() {
 
 function pre_install_docker() {
     ##### Docker repository add for rocky
-    # if [ -f /etc/yum.repos.]
-    run_command "dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
-    if [ $? -eq 0 ]; then
-        run_command "dnf repolist"
+    if [ ! -f /etc/yum.repos.d/docker-ce.repo ]; then
+        run_command "dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
         if [ $? -eq 0 ]; then
-            return 0
+            run_command "dnf repolist"
+            if [ $? -eq 0 ]; then
+                return 0
+            fi
+        else
+            logging_message "ERROR" "Failed dnf repolist."
+            return 1
         fi
+    else
+        logging_message "SKIP" "Already dnf repolist"
+        return 0
     fi
 }
 
 function install_docker() {
     for _pkg in "docker-ce" "docker-ce-cli" "containerd.io" "docker-buildx-plugin" "docker-compose-plugin"; do
         pre_pkg_check "${_pkg}"
-        if [ $? -eq 1 ];
+        if [ $? -eq 1 ]; then
             run_command "dnf install -y ${_pkg}"
+        else
+            logging_message "SKIP" "Already install ${_check_pkg}"
         fi
     done
 
-    run_command "sudo curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose"
-    if [ $? -eq 0 ]; then
-        if ! grep -q '/usr/local/bin' ${HOME}/.bash_profile; then
-            run_command "sed -i '/export PATH/i\PATH=\$PATH:/usr/local/bin' ${HOME}/.bash_profile"
-        fi
-        run_command "chmod +x /usr/local/bin/docker-compose"
-        [ $? -eq 0 ] && return 0 || return 1
+    
+    if [ ! -d /APP/docker.d/bin ]; then
+        run_command "mkdir -p /APP/docker.d/bin"
     else
-        logging_message "ERROR" "Download fail docker-compose."
-        return 1
+        logging_message "Already create dri /APP/docker.d/bin"
+    fi
+
+    if [ ! -f /APP/docker.d/bin/docker-compose ]; then
+        run_command "sudo curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /APP/docker.d/bin/docker-compose"
+        if [ $? -eq 0 ]; then
+            if ! grep -q '/APP/docker.d/bin' ${HOME}/.bash_profile; then
+                run_command "sed -i '/export PATH/i\PATH=\$PATH:/APP/docker.d/bin' ${HOME}/.bash_profile"
+            else
+                logging_message "SKIP" "Already setup PATH"
+            fi
+
+            run_command "chmod +x /APP/docker.d/bin/docker-compose"
+            if [ $? -eq 0 ]; then
+                return 0
+            else
+                return 1
+            fi
+        else
+            logging_message "ERROR" "Download fail docker-compose."
+            return 1
+        fi
+    else
+        logging_message "SKIP" "Already download file /APP/docker.d/bin/docker-compose."
+        return 0
     fi
 }
 
 function remove_docker() {
     for _pkg in "docker-ce" "docker-ce-cli" "containerd.io" "docker-buildx-plugin" "docker-compose-plugin" "docker-ce-rootless-extras"; do
-        run_command "dnf remove -y ${_pkg}"
+        pre_pkg_check "${_pkg}"
+        if [ $? -eq 0 ]; then
+            run_command "dnf remove -y ${_pkg}"
+        else
+            logging_message "SKIP" "Already remove ${_check_pkg}"
+        fi
     done
 
-    run_command "rm -f /etc/yum.repos.d/docker-ce.repo"
-    run_command "rm -rf /var/lib/docker"
-    run_command "rm -rf /var/lib/containerd"
+    for _path in "/etc/yum.repos.d/docker-ce.repo" "/var/lib/docker" "/var/lib/containerd"; do
+        if ! $(ls -l ${_paht} >/dev/null 2>&1); then
+            run_command "rm -f ${_path}"
+        else
+            logging_message "SKIP" "Already remove ${_path}"
+        fi
+    done
+
+    if [ -f /APP/docker.d/bin/docker-compose ]; then
+        run_command 'rm  -f /APP/docker.d/bin/docker-compose'
+    fi
+
+    _line_num=$(grep -n '/APP/docker.d/bin' ${HOME}/.bash_profile |awk -F':' '{print $1}')
+    [ -n "${_line_num}" ] && run_command "sed -i \"${_line_num}d\" ${HOME}/.bash_profile"
 }
 
 main() {
@@ -195,7 +230,7 @@ main() {
             if [ $? -eq 0 ]; then
                 install_docker
                 if [ $? -eq 0 ]; then
-                    logging_message "INFO" "Complete install docker & docker-compose and excute command [ source ${HOME}/.bash_profile ]."
+                    logging_message "INFO" "Complete install docker & docker-compose and excute command [ source ${HOME}/.bash_profile && systemctl start docker && docker-compose version ]."
                     exit 0
                 else
                     exit 1
@@ -204,7 +239,15 @@ main() {
                 exit 1
             fi
         ;;
-        "remove"  ) ;;
+        "remove" )
+            remove_docker
+            if [ $? -eq 0 ]; then
+                logging_message "INFO" "Complete remove docker"
+                exit 0
+            else
+                exit 1
+            fi
+        ;;
     esac
 }
 main $*

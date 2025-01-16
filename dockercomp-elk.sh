@@ -172,7 +172,7 @@ function pre_elk() {
 
     if [ ! -f ${ELK_PATH}/docker-compose.yml ]; then
         run_command "git clone https://github.com/deviantony/docker-elk ${ELK_PATH}"
-        if [ $? -eq 0]; then
+        if [ $? -eq 0 ]; then
             gen_pass
         else
             logging "ERROR" "Dir download fail."

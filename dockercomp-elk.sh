@@ -145,18 +145,7 @@ function set_opts() {
 }
 
 function gen_pass() {
-    local TMP_PASS_FILE="${ELK_PATH}/conf.d/elk_pass.tmp"
     local ARR_PASS_NAME=( "ELASTIC" "LOGSTASH_INTERNAL" "KIBANA_SYSTEM" "METRICBEAT_INTERNAL" "FILEBEAT_INTERNAL" "HEARTBEAT_INTERNAL" "MONITORING_INTERNAL" "BEATS_SYSTEM" )
-    
-    if [ -f ${TMP_PASS_FILE} ]; then
-        logging "SKIP" "${TMP_PASS_FILE} file already exists."
-        return 1
-    else
-        if [ ! -d ${ELK_PATH}/conf.d ]; then
-            run_command "mkdir -p ${ELK_PATH}/conf.d"
-        fi
-        run_command "touch ${TMP_PASS_FILE}"
-    fi
 
     for pass_name in ${ARR_PASS_NAME[@]}; do
         pass=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32 ; echo '')

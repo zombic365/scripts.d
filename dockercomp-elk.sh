@@ -80,7 +80,8 @@ function logging() {
         "OK"    ) printf "%s | ${Green}%-*s${ResetCl} | ${Green}%s${ResetCl}\n"  "${log_time}" 7 "${log_type}" "command ok."   ;;
         "FAIL"  ) printf "%s | ${Red}%-*s${ResetCl} | ${Red}%s${ResetCl}\n"      "${log_time}" 7 "${log_type}" "command fail." ;;
         "INFO"  ) printf "%s | ${Cyan}%-*s${ResetCl} | %s${ResetCl}\n"           "${log_time}" 7 "${log_type}" "${log_msg}"    ;;
-        "WARR"  ) printf "%s | ${Red}%-*s${ResetCl} | %s${ResetCl}\n"            "${log_time}" 7 "${log_type}" "${log_msg}"    ;;
+        "WARR"  ) printf "%s | ${Red}%-*s${Res
+        etCl} | %s${ResetCl}\n"            "${log_time}" 7 "${log_type}" "${log_msg}"    ;;
         "SKIP"  ) printf "%s | ${Yellow}%-*s${ResetCl} | %s${ResetCl}\n"         "${log_time}" 7 "${log_type}" "${log_msg}"    ;;
         "ERROR" ) printf "%s | ${BRed}%-*s${ResetCl} | %s${ResetCl}\n"           "${log_time}" 7 "${log_type}" "${log_msg}"    ;;
     esac
@@ -177,7 +178,7 @@ function pre_elk() {
             logging "ERROR" "Dir download fail."
             return 1
         fi
-        
+
         local LINE_NUM=$(grep -n 'depends_on' ${ELK_PATH}/docker-compose.yml |awk -F':' '{print $1}' |head -n1)
         local APPEND_LINE_NUM=$(expr ${LINE_NUM} + 2)
         run_command "sed -i '${APPEND_LINE_NUM}i\      - logstash\n      - kibana' ${ELK_PATH}/docker-compose.yml"

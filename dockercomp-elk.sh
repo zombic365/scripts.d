@@ -211,7 +211,7 @@ function remove_elk() {
                     run_command "docker rm ${container_id}"
                 done <<<$(docker ps -a --format "table {{.ID}}\t{{.Names}}" |grep $(basename ${ELK_PATH}))
             ;;
-            [nN] ) continue ;;
+            [nN] ) return 1 ;;
             *    )
                 run_command "docker-compose -f ${ELK_PATH}/docker-compose.yml down"
                 while read -r container_id container_name; do

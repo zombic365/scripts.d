@@ -196,7 +196,7 @@ function istanll_elk() {
 }
 
 function remove_elk() {
-    if ! docker ps -a --format "table {{.ID}}\t{{.Names}}" |grep -q $(basename ${ELK_PATH}); then
+    if ! docker ps -a --format "table {{.ID}}\t{{.Names}}" |grep -q $(basename "${ELK_PATH}" |tr -d '[:punct:]'); then
         logging "SKIP" "Container not running"
     else
         while read -r container_id container_name; do

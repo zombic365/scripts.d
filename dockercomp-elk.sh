@@ -201,7 +201,7 @@ function remove_elk() {
     else
         while read -r container_id container_name; do
             logging "INFO" "Delete ${container_name} [ ${container_id} ]"
-        done <<<$(docker ps -a --format "table {{.ID}}\t{{.Names}}" |grep $(basename ${ELK_PATH}))
+        done <<<$(docker ps -a --format "table {{.ID}}\t{{.Names}}" |grep -q $(basename "${ELK_PATH}" |tr -d '[:punct:]'))
 
         read -p "Contiue? (Y|n)" _ans
         case ${_ans} in

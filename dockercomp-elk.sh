@@ -80,8 +80,7 @@ function logging() {
         "OK"    ) printf "%s | ${Green}%-*s${ResetCl} | ${Green}%s${ResetCl}\n"  "${log_time}" 7 "${log_type}" "command ok."   ;;
         "FAIL"  ) printf "%s | ${Red}%-*s${ResetCl} | ${Red}%s${ResetCl}\n"      "${log_time}" 7 "${log_type}" "command fail." ;;
         "INFO"  ) printf "%s | ${Cyan}%-*s${ResetCl} | %s${ResetCl}\n"           "${log_time}" 7 "${log_type}" "${log_msg}"    ;;
-        "WARR"  ) printf "%s | ${Red}%-*s${Res
-        etCl} | %s${ResetCl}\n"            "${log_time}" 7 "${log_type}" "${log_msg}"    ;;
+        "WARR"  ) printf "%s | ${Red}%-*s${ResetCl} | %s${ResetCl}\n"            "${log_time}" 7 "${log_type}" "${log_msg}"    ;;
         "SKIP"  ) printf "%s | ${Yellow}%-*s${ResetCl} | %s${ResetCl}\n"         "${log_time}" 7 "${log_type}" "${log_msg}"    ;;
         "ERROR" ) printf "%s | ${BRed}%-*s${ResetCl} | %s${ResetCl}\n"           "${log_time}" 7 "${log_type}" "${log_msg}"    ;;
     esac
@@ -121,7 +120,8 @@ function set_opts() {
     -- "$@")
 
     ELK_ACTIVE=1
-    DEBUG_MODE="no"
+    
+    ="no"
     eval set -- "${arguments}"
     while true; do
         case "$1" in
@@ -130,8 +130,8 @@ function set_opts() {
             -r ) MODE="remove"  ; shift ;;
             --data-dir ) ELK_PATH="$2" ; shift 2 ;;
             --elk-ver  ) ELK_VERSION="$2" ; shift 2   ;;
-            --running  ) ELK_ACTIVE=0 ;;
-            --verbose  ) DEBUG_MODE="yes" ;;
+            --running  ) ELK_ACTIVE=0 ; shift ;;
+            --verbose  ) DEBUG_MODE="yes" ; shift ;;
             -- ) shift ; break ;;
             *  ) help_usage ;;
         esac

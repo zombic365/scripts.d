@@ -152,6 +152,9 @@ function gen_pass() {
         logging "SKIP" "${TMP_PASS_FILE} file already exists."
         return 1
     else
+        if [ ! -d ${ELK_PATH}/conf.d ]; then
+            run_command "mkdir -p ${ELK_PATH}/conf.d"
+        fi
         run_command "touch ${TMP_PASS_FILE}"
     fi
 

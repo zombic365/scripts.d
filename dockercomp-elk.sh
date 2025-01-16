@@ -149,8 +149,8 @@ function gen_pass() {
 
     for pass_name in ${ARR_PASS_NAME[@]}; do
         pass=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32 ; echo '')
-        run_command "sed -i \"s/^${_pass_name}_PASSWORD/#&/g\" ${ELK_PATH}/.env"
-        run_command "sed -i \"/^#${_pass_name}_PASSWORD/a\\${pass_name}_PASS=\"${pass}\"\" ${ELK_PATH}/.env"
+        run_command "sed -i \"s/^${pass_name}_PASSWORD/#&/g\" ${ELK_PATH}/.env"
+        run_command "sed -i \"/^#${pass_name}_PASSWORD/a\\${pass_name}_PASSWORD=\"${pass}\"\" ${ELK_PATH}/.env"
     done
 }
 

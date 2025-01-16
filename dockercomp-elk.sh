@@ -120,18 +120,17 @@ function set_opts() {
     -- "$@")
 
     ELK_ACTIVE=1
-    
-    ="no"
+    DEBUG_MODE="no"
     eval set -- "${arguments}"
     while true; do
         case "$1" in
             -h | --help ) help_usage    ;;
             -i ) MODE="install" ; shift ;;
             -r ) MODE="remove"  ; shift ;;
-            --data-dir ) ELK_PATH="$2" ; shift 2 ;;
-            --elk-ver  ) ELK_VERSION="$2" ; shift 2   ;;
-            --running  ) ELK_ACTIVE=0 ; shift ;;
-            --verbose  ) DEBUG_MODE="yes" ; shift ;;
+            --data-dir ) ELK_PATH="$2"    ; shift 2 ;;
+            --elk-ver  ) ELK_VERSION="$2" ; shift 2 ;;
+            --running  ) ELK_ACTIVE=0     ; shift   ;;
+            --verbose  ) DEBUG_MODE="yes" ; shift   ;;
             -- ) shift ; break ;;
             *  ) help_usage ;;
         esac

@@ -193,14 +193,18 @@ main() {
     [ $# -eq 0 ] && help_usage
     set_opts "$@"
 
+    if javac --version |grep -Eq '8|11|17'; then
+        logging_message "ERROR" "Supported Java version 8,11,17, please check java."
+        exit 1 
+    fi
+
     case ${MODE} in
         "install" )
             install_kafka
             if [ $? -eq 0 ]; then
                 if [ ${KAFKA_ACTIVE} -eq 0 ]; then
                     if [ ! -f /usr/lib/systemd/system/kafka.service ]; then
-                        run_command "systemctl daemon-reload"
-                        
+                        run_command "systemctl daemon-reload"                
                     fi
                     
                     run_command "systemctl start kafka"

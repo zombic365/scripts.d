@@ -135,9 +135,6 @@ ExecStop=/bin/sh -c '${KAFKA_PATH}/bin/kafka-server-stop.sh'
 WantedBy=multi-user.target
 EOF"
     fi
-
-    systemctl daemon-reload
-    systemctl start kafka
 }
 
 function help_usage() {
@@ -177,9 +174,9 @@ function set_opts() {
             -h | --help ) help_usage    ;;
             -i ) MODE="install" ; shift ;;
             -r ) MODE="remove"  ; shift ;;
-            --kafka-dir ) KAFKA_PATH="$2" ; shift 2 ;;
-            --running  ) KAFKA_ACTIVE=0   ; shift   ;;
-            --verbose  ) DEBUG_MODE="yes" ; shift   ;;
+            --kafka-dir ) export KAFKA_PATH="$2"  ; shift 2 ;;
+            --running   ) export KAFKA_ACTIVE=0   ; shift   ;;
+            --verbose   ) export DEBUG_MODE="yes" ; shift   ;;
             -- ) shift ; break ;;
             *  ) help_usage ;;
         esac
@@ -198,18 +195,28 @@ main() {
 
     case ${MODE} in
         "install" )
-            if [ ${KAFKA_ACTIVE} -eq 0 ]; then
-                install_kafka
-                if [ $? -eq 0 ]; then
-                    logging "INFO" "Install completed."
-                    exit 0
+            install_kafka
+            if [ $? -eq 0 ]; then
+                if [ ${KAFKA_ACTIVE} -eq 0 ]; then
+                    if [ ! -f /usr/lib/systemd/system/kafka.service ]; then
+                        run_command "systemctl daemon-reload"
+                        
+                    fi
+                    
+                    run_command "systemctl start kafka"
+                    if [ $? -eq 0 ]; then
+                        logging "INFO" "Install completed."
+                        exit 0
+                    else
+                        exit 1
+                    fi
                 else
-                    exit 1
+                    logging "INFO" "The installation is complete, please perform the command below."
+                    logging "INFO" "systemctl start kafka"
+                    exit 0
                 fi
             else
-                logging "INFO" "The installation is complete, please perform the command below."
-                logging "INFO" "systemctl start kafka"
-                exit 0
+                exit 1
             fi
         ;;
         "remove" )

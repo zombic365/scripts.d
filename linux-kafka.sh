@@ -194,7 +194,7 @@ main() {
     set_opts "$@"
 
     if javac --version |grep -Eq '8|11|17'; then
-        logging_message "ERROR" "Supported Java version 8,11,17, please check java."
+        logging "ERROR" "Supported Java version 8,11,17, please check java."
         exit 1 
     fi
 

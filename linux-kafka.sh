@@ -99,7 +99,7 @@ function install_kafka() {
 
     ### kafka cluster에서 사용할 고유 UUID 생성
     if [ ! -f ${KAFKA_PATH}/kafka.d/kafka-cluster-uuid.tmp ]; then
-        run_command "${KAFKA_PATH}/kraft.d/bin/kafka-storage.sh random-uuid >${KAFKA_PATH}/kafka.dkafka-cluster-uuid.tmp"
+        run_command "${KAFKA_PATH}/kafka.d/bin/kafka-storage.sh random-uuid >${KAFKA_PATH}/kafka.dkafka-cluster-uuid.tmp"
     fi
 
     local KAFKA_CLUSTER_ID="$(cat ${KAFKA_PATH}/kafka.d/kafka-cluster-uuid.tmp)"

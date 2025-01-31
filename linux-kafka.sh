@@ -94,27 +94,27 @@ function install_kafka() {
 
     ### kafka.d/bin 파일 환경변수로 등록
     if ! grep -q 'kafka.d' ${HOME}/.bash_profile; then
-        run_command "sed -i \"/export PATH/i\PATH=\$PATH:${KAFKA_PATH}\/kafka.d\/bin\" ${HOME}/.bash_profile"
+        run_command "sed -i '/export PATH/i\PATH=\$PATH:${KAFKA_PATH}\/kafka.d\/bin' ${HOME}/.bash_profile"
     fi
 
     ### kafka cluster에서 사용할 고유 UUID 생성
     if [ ! -f ${KAFKA_PATH}/kafka.d/kafka-cluster-uuid.tmp ]; then
-        ${KAFKA_PATH}/kraft.d/bin/kafka-storage.sh random-uuid >${KAFKA_PATH}/kafka.dkafka-cluster-uuid.tmp
+        run_command "${KAFKA_PATH}/kraft.d/bin/kafka-storage.sh random-uuid >${KAFKA_PATH}/kafka.dkafka-cluster-uuid.tmp"
     fi
 
     local KAFKA_CLUSTER_ID="$(cat ${KAFKA_PATH}/kafka.d/kafka-cluster-uuid.tmp)"
 
     ### kraft 로그 경로 변경
-    cp -p ${KAFKA_PATH}/config/kraft/reconfig-server.properties ${KAFKA_PATH}/config/kraft/reconfig-server.properties_$(date +%y%m%d_%H%M%S)
+    run_command "cp -p ${KAFKA_PATH}/config/kraft/reconfig-server.properties ${KAFKA_PATH}/config/kraft/reconfig-server.properties_$(date +%y%m%d_%H%M%S)"
 
     if ! grep -q '${KAFKA_PATH}/kafka.d/logs/kraft-combined-logs' ${KAFKA_PATH}/config/kraft/reconfig-server.properties; then
         run_command "sed -i 's/^log.dirs/#&/g' ${KAFKA_PATH}/config/kraft/reconfig-server.properties"
-        run_command "sed -i \"/^#log.dirs/a\log.dirs=${KAFKA_PATH}\/kafka.d\/logs\/kraft-combined-logs\" ${KAFKA_PATH}/config/kraft/reconfig-server.properties"
+        run_command "sed -i '/^#log.dirs/a\log.dirs=\${KAFKA_PATH}\/kafka.d\/logs\/kraft-combined-logs' ${KAFKA_PATH}/config/kraft/reconfig-server.properties"
     fi
 
     ### kafka 데이터 포맷
     if [ ! -d ${KAFKA_PATH}/kafka.d/logs/kraft-combined-logs ]; then    
-        ${KAFKA_PATH}/kafka.d/bin/kafka-storage.sh format --standalone -t ${KAFKA_CLUSTER_ID} -c ${KAFKA_PATH}/config/kraft/reconfig-server.properties
+        run_command "${KAFKA_PATH}/kafka.d/bin/kafka-storage.sh format --standalone -t ${KAFKA_CLUSTER_ID} -c ${KAFKA_PATH}/config/kraft/reconfig-server.properties"
     fi
 
     ### systemd 파일 생성

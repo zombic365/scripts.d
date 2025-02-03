@@ -99,22 +99,22 @@ function install_kafka() {
 
     ### kafka cluster에서 사용할 고유 UUID 생성
     if [ ! -f ${KAFKA_PATH}/kafka.d/kafka-cluster-uuid.tmp ]; then
-        run_command "${KAFKA_PATH}/kafka.d/bin/kafka-storage.sh random-uuid >${KAFKA_PATH}/kafka.dkafka-cluster-uuid.tmp"
+        run_command "${KAFKA_PATH}/kafka.d/bin/kafka-storage.sh random-uuid >${KAFKA_PATH}/kafka.d/kafka-cluster-uuid.tmp"
     fi
 
     local KAFKA_CLUSTER_ID="$(cat ${KAFKA_PATH}/kafka.d/kafka-cluster-uuid.tmp)"
 
     ### kraft 로그 경로 변경
-    run_command "cp -p ${KAFKA_PATH}/config/kraft/reconfig-server.properties ${KAFKA_PATH}/config/kraft/reconfig-server.properties_$(date +%y%m%d_%H%M%S)"
+    run_command "cp -p ${KAFKA_PATH}/kafka.d/config/kraft/reconfig-server.properties ${KAFKA_PATH}/kafka.d/config/kraft/reconfig-server.properties_$(date +%y%m%d_%H%M%S)"
 
-    if ! grep -q '${KAFKA_PATH}/kafka.d/logs/kraft-combined-logs' ${KAFKA_PATH}/config/kraft/reconfig-server.properties; then
-        run_command "sed -i 's/^log.dirs/#&/g' ${KAFKA_PATH}/config/kraft/reconfig-server.properties"
-        run_command "sed -i '/^#log.dirs/a\log.dirs=\${KAFKA_PATH}\/kafka.d\/logs\/kraft-combined-logs' ${KAFKA_PATH}/config/kraft/reconfig-server.properties"
+    if ! grep -q '${KAFKA_PATH}/kafka.d/logs/kraft-combined-logs' ${KAFKA_PATH}/kafka.d/config/kraft/reconfig-server.properties; then
+        run_command "sed -i 's/^log.dirs/#&/g' ${KAFKA_PATH}/kafka.d/config/kraft/reconfig-server.properties"
+        run_command "sed -i '/^#log.dirs/a\log.dirs=\${KAFKA_PATH}\/kafka.d\/logs\/kraft-combined-logs' ${KAFKA_PATH}/kafka.d/config/kraft/reconfig-server.properties"
     fi
 
     ### kafka 데이터 포맷
     if [ ! -d ${KAFKA_PATH}/kafka.d/logs/kraft-combined-logs ]; then    
-        run_command "${KAFKA_PATH}/kafka.d/bin/kafka-storage.sh format --standalone -t ${KAFKA_CLUSTER_ID} -c ${KAFKA_PATH}/config/kraft/reconfig-server.properties"
+        run_command "${KAFKA_PATH}/kafka.d/bin/kafka-storage.sh format --standalone -t ${KAFKA_CLUSTER_ID} -c ${KAFKA_PATH}/kafka.d/config/kraft/reconfig-server.properties"
     fi
 
     ### systemd 파일 생성
@@ -128,8 +128,8 @@ After=network.target
 [Service]
 Type=simple
 Restart=on-failure
-ExecStart=/bin/sh -c '${KAFKA_PATH}/bin/kafka-server-start.sh ${KAFKA_PATH}/config/kraft/reconfig-server.properties'
-ExecStop=/bin/sh -c '${KAFKA_PATH}/bin/kafka-server-stop.sh'
+ExecStart=/bin/sh -c '${KAFKA_PATH}/kafka.d/bin/kafka-server-start.sh ${KAFKA_PATH}/kafka.d/config/kraft/reconfig-server.properties'
+ExecStop=/bin/sh -c '${KAFKA_PATH}/kafka.d/bin/kafka-server-stop.sh'
 
 [Install]
 WantedBy=multi-user.target
@@ -203,7 +203,7 @@ main() {
             install_kafka
             if [ $? -eq 0 ]; then
                 if [ ${KAFKA_ACTIVE} -eq 0 ]; then
-                    if [ ! -f /usr/lib/systemd/system/kafka.service ]; then
+                    if [ -f /usr/lib/systemd/system/kafka.service ]; then
                         run_command "systemctl daemon-reload"                
                     fi
                     

@@ -470,6 +470,10 @@ ${UWhite}Options${ResetCl}:
     exit 0
 }
 
+function remove_kafka() {
+    ps -ef |grep 
+}
+
 function set_opts() {
     arguments=$(getopt --options irh \
     --longoptions help,kafka-dir:,cluster-ips:,cluster-mode:,main,sub:,running,verbose \
